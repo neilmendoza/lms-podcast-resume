@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<extension>
+	<name>PLUGIN_PODCAST_RESUME</name>
+	<module>Plugins::PodcastResume::Plugin</module>
+	<version>1.0.0</version>
+	<description>PLUGIN_PODCAST_RESUME_DESC</description>
+	<creator>Neil Mendoza (www.neilmendoza.com)</creator>
+	<defaultState>enabled</defaultState>
+	<type>2</type>
+	<targetApplication>
+		<id>SqueezeCenter</id>
+		<minVersion>7.6</minVersion>
+		<maxVersion>*</maxVersion>
+	</targetApplication>
+</extension>

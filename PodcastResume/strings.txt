@@ -1,0 +1,5 @@
+PLUGIN_PODCAST_RESUME
+	EN	Podcast Resume
+
+PLUGIN_PODCAST_RESUME_DESC
+	EN	Automatically resumes podcasts from where you last stopped. Also fixes favorites entries to use the Podcast parser.

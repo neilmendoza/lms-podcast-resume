@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<extensions>
+	<details>
+		<title lang="EN">Podcast Resume</title>
+	</details>
+	<plugins>
+		<plugin version="1.0.0" minTarget="7.6" maxTarget="*">
+			<title lang="EN">Podcast Resume</title>
+			<desc lang="EN">Automatically resumes podcasts from where you last stopped.</desc>
+			<url>https://github.com/neilmendoza/lms-podcast-resume/archive/refs/heads/main.zip</url>
+			<creator>Neil Mendoza (www.neilmendoza.com)</creator>
+		</plugin>
+	</plugins>
+</extensions>
