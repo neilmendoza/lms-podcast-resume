@@ -14,23 +14,74 @@ my $log = Slim::Utils::Log->addLogCategory({
 });
 
 my $cache;
+my $myPrefs = preferences('plugin.podcastresume');
 
 sub initPlugin {
 	my $class = shift;
 	$class->SUPER::initPlugin(@_);
 
 	$cache = Slim::Utils::Cache->new;
+	$myPrefs->init({ positions => {} });
 
 	require Slim::Plugin::Podcast::ProtocolHandler;
 	require Slim::Plugin::Podcast::Plugin;
 
+	my $origOnStop = \&Slim::Plugin::Podcast::ProtocolHandler::onStop;
+
 	no warnings 'redefine';
 	*Slim::Plugin::Podcast::ProtocolHandler::getNextTrack = \&_getNextTrack;
+	*Slim::Plugin::Podcast::ProtocolHandler::onStop = sub {
+		my ($self, $song) = @_;
+		$origOnStop->($self, $song);
+		_savePosition($song);
+	};
 	use warnings 'redefine';
+
+	Slim::Control::Request::subscribe(\&_onPause, [['playlist'], ['pause']]);
 
 	_fixFavorites();
 
-	$log->warn("Podcast auto-resume active");
+	$log->warn("Podcast auto-resume active (with persistent storage)");
+}
+
+sub _savePosition {
+	my ($song) = @_;
+
+	my $elapsed = eval { $song->master->controller->playingSongElapsed };
+	return unless defined $elapsed;
+
+	my ($httpUrl) = eval { Slim::Plugin::Podcast::Plugin::unwrapUrl($song->currentTrack->url) };
+	return unless $httpUrl;
+
+	my $positions = $myPrefs->get('positions') || {};
+
+	if ($elapsed > 15 && (!$song->duration || $elapsed < $song->duration - 15)) {
+		$positions->{$httpUrl} = int($elapsed);
+		main::INFOLOG && $log->info("Persisted position for $httpUrl: $elapsed");
+	} else {
+		delete $positions->{$httpUrl};
+		main::INFOLOG && $log->info("Cleared position for $httpUrl");
+	}
+
+	if (keys %$positions > 200) {
+		my @sorted = sort { $positions->{$a} <=> $positions->{$b} } keys %$positions;
+		delete $positions->{$_} for splice(@sorted, 0, keys(%$positions) - 200);
+	}
+
+	$myPrefs->set('positions', $positions);
+}
+
+sub _onPause {
+	my $request = shift;
+	return unless $request->getParam('_newvalue');
+
+	my $client = $request->client() || return;
+	my $song = $client->controller()->playingSong() || return;
+
+	my ($httpUrl) = eval { Slim::Plugin::Podcast::Plugin::unwrapUrl($song->currentTrack->url) };
+	return unless $httpUrl;
+
+	_savePosition($song);
 }
 
 sub _getNextTrack {
@@ -43,7 +94,11 @@ sub _getNextTrack {
 	}
 	else {
 		my ($httpUrl) = Slim::Plugin::Podcast::Plugin::unwrapUrl($song->currentTrack->url);
-		my $saved = $cache->get("podcast-$httpUrl");
+
+		my $positions = $myPrefs->get('positions') || {};
+		my $saved = $positions->{$httpUrl};
+		$saved //= $cache->get("podcast-$httpUrl");
+
 		main::INFOLOG && $log->info("auto-resume: $httpUrl saved=" . (defined $saved ? $saved : 'none'));
 
 		if ($saved && $saved > 15) {
